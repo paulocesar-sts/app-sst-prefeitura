@@ -48,6 +48,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid 
 <section id="visita" class="page"><h2>📸 Nova Visita Técnica</h2>
 <form id="fVis"><select id="vLocal" required><option value="">Escolha o local</option></select><input id="vSetor" placeholder="Setor / ambiente" required><input id="vData" type="date" required>
 <input id="vFoto" type="file" accept="image/*" capture="environment"><img id="fotoPreview" class="preview" hidden><input id="vFotoData" type="hidden">
+  <button type="button" class="danger" onclick="limparFoto()">🗑️ Excluir foto</button>
 <textarea id="vSituacao" placeholder="Descreva o que você observou (ajuda a análise)"></textarea>
 <div class="hint">A análise é orientativa. A conclusão de conformidade/não conformidade deve ser confirmada por você após a vistoria no local.</div>
 <button type="button" class="secondary" onclick="analisar()">🔎 Analisar pontos a verificar</button>
@@ -127,7 +128,14 @@ $('vFoto').onchange=async e=>{
     catch(err){$('vFotoData').value=''}
   }
 };
-function analisar(){
+function limparFoto(){
+  if(!confirm('Excluir a foto selecionada?')) return;
+  $('vFoto').value='';
+  $('fotoPreview').src='';
+  $('fotoPreview').hidden=true;
+  $('vFotoData').value='';
+}
+  function analisar(){
   let s=($('vSituacao').value+' '+$('vSetor').value+' '+$('vLocal').selectedOptions[0]?.text).toLowerCase();
   let title='🔎 Pontos gerais para verificar';
   let items=[
