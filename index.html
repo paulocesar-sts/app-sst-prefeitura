@@ -138,11 +138,11 @@ $('vFoto').onchange=async e=>{
 
 function renderFotosAtuais(){
   $('fotosPreview').innerHTML=fotosAtuais.map((foto,i)=>
-    `<div class="card">
-      <img src="${foto}" class="preview" alt="Foto ${i+1}">
-      <button type="button" class="danger" onclick="excluirFotoAtual(${i})">🗑️ Excluir foto</button>
-    </div>`
-  ).join('');
+  '<div class="card">' +
+    '<img src="' + foto + '" class="preview" alt="Foto ' + (i+1) + '">' +
+    '<button type="button" class="danger" onclick="excluirFotoAtual(' + i + ')">🗑️ Excluir foto</button>' +
+  '</div>'
+).join('');
 }
 
 function excluirFotoAtual(i){
