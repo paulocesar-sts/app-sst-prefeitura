@@ -47,8 +47,9 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid 
 
 <section id="visita" class="page"><h2>📸 Nova Visita Técnica</h2>
 <form id="fVis"><select id="vLocal" required><option value="">Escolha o local</option></select><input id="vSetor" placeholder="Setor / ambiente" required><input id="vData" type="date" required>
-<input id="vFoto" type="file" accept="image/*" capture="environment"><img id="fotoPreview" class="preview" hidden><input id="vFotoData" type="hidden">
-  <button type="button" class="danger" onclick="limparFoto()">🗑️ Excluir foto</button>
+<input id="vFoto" type="file" accept="image/*" capture="environment" multiple>
+<div id="fotosPreview"></div>
+<button type="button" class="danger" onclick="limparFoto()">🗑️ Limpar todas as fotos</button>
 <textarea id="vSituacao" placeholder="Descreva o que você observou (ajuda a análise)"></textarea>
 <div class="hint">A análise é orientativa. A conclusão de conformidade/não conformidade deve ser confirmada por você após a vistoria no local.</div>
 <button type="button" class="secondary" onclick="analisar()">🔎 Analisar pontos a verificar</button>
@@ -109,7 +110,7 @@ $('listaLocais').innerHTML=db.locais.map(x=>card(`<b>${esc(x.nome)}</b><div>${es
 $('listaVis').innerHTML=db.visitas.slice().reverse().map(x=>card(
       `<b>📸 ${esc(ln(x.local))} — ${esc(x.setor)}</b>
       <div>${x.data} • ${esc(x.prior)} • ${esc(x.status)}</div>
-      ${x.foto?`<img src="${x.foto}" class="preview" alt="Foto da visita">`:''}
+      ${x.fotos?.length?x.fotos.map((foto,i)=>`<img src="${foto}" class="preview" alt="Foto ${i+1}">`).join(''):(x.foto?`<img src="${x.foto}" class="preview" alt="Foto da visita">`:'')}
       <p>${esc(x.situacao||'')}</p>
       <div class="muted">${esc(x.acao||'')} ${x.resp?'• '+esc(x.resp):''} ${x.prazo?'• prazo '+x.prazo:''}</div>`
     )).join('')||'<p>Nenhuma visita registrada.</p>';
@@ -118,22 +119,43 @@ $('listaDds').innerHTML=db.dds.slice().reverse().map(x=>card(`<b>🗣️ ${esc(x
 $('listaFun').innerHTML=db.funcionarios.map(x=>card(`<b>${esc(x.nome)}</b><div>${esc(x.cargo)} • ${esc(x.setor||'')}</div><div class="muted">Matrícula: ${esc(x.mat||'-')} • GHE: ${esc(x.ghe||'-')}</div>`)).join('')||'<p>Nenhum funcionário.</p>';
 $('listaEpi').innerHTML=db.epis.slice().reverse().map(x=>card(`<b>🦺 ${esc(x.fun)}</b><div>${esc(x.epi)} ${x.ca?'• CA '+esc(x.ca):''} • Qtde ${x.qtd}</div><div class="muted">${x.data}</div>`)).join('')||'<p>Nenhuma entrega.</p>';
 let p=[...db.visitas.filter(x=>x.status!='Concluído').map(x=>card(`<b>📸 ${esc(ln(x.local))} — ${esc(x.situacao||'Pendência')}</b><div>${esc(x.prior)} • prazo ${esc(x.prazo||'-')} • ${esc(x.status)}</div>`)),...db.inspecoes.filter(x=>x.status!='Concluído').map(x=>card(`<b>🔍 ${esc(ln(x.local))} — ${esc(x.setor)}</b><div>${esc(x.obs||'Pendência')} • ${esc(x.status)}</div>`))];$('listaPend').innerHTML=p.join('')||'<p>🎉 Nenhuma pendência aberta.</p>';
-}
+let fotosAtuais=[];
+
 $('vFoto').onchange=async e=>{
-  let f=e.target.files[0];
-  if(f){
-    $('fotoPreview').src=URL.createObjectURL(f);
-    $('fotoPreview').hidden=false;
-    try{$('vFotoData').value=await fotoParaDataURL(f)}
-    catch(err){$('vFotoData').value=''}
+  for(const f of e.target.files){
+    try{
+      const foto=await fotoParaDataURL(f);
+      fotosAtuais.push(foto);
+    }catch(err){}
   }
+
+  e.target.value='';
+
+ renderFotosAtuais(); 
 };
+  
+
+
+function renderFotosAtuais(){
+  $('fotosPreview').innerHTML=fotosAtuais.map((foto,i)=>
+    <div class="card">
+      <img src="${foto}" class="preview" alt="Foto ${i+1}">
+      <button type="button" class="danger" onclick="excluirFotoAtual(${i})">🗑️ Excluir foto</button>
+    </div>
+  `).join('');
+}
+
+function excluirFotoAtual(i){
+  if(!confirm('Excluir esta foto?')) return;
+  fotosAtuais.splice(i,1);
+  renderFotosAtuais();
+}
+
 function limparFoto(){
-  if(!confirm('Excluir a foto selecionada?')) return;
+  if(!confirm('Excluir todas as fotos selecionadas?')) return;
+  fotosAtuais=[];
   $('vFoto').value='';
-  $('fotoPreview').src='';
-  $('fotoPreview').hidden=true;
-  $('vFotoData').value='';
+  renderFotosAtuais();
 }
   function analisar(){
   let s=($('vSituacao').value+' '+$('vSetor').value+' '+$('vLocal').selectedOptions[0]?.text).toLowerCase();
@@ -198,8 +220,8 @@ $('fVis').onsubmit=e=>{e.preventDefault();db.visitas.push({
   local:$('vLocal').value,setor:$('vSetor').value,data:$('vData').value,
   situacao:$('vSituacao').value,prior:$('vPrior').value,acao:$('vAcao').value,
   resp:$('vResp').value,prazo:$('vPrazo').value,status:$('vStatus').value,
-  foto:$('vFotoData').value||''
-});e.target.reset();$('vData').value=today();$('fotoPreview').hidden=true;$('vFotoData').value='';$('analise').hidden=true;$('fotoChecklist').hidden=true;$('riscosFoto').innerHTML='';save();go('visita')};
+
+   fotos:[...fotosAtuais]});e.target.reset();$('vData').value=today();fotosAtuais=[];$('fotosPreview').innerHTML='';$('analise').hidden=true;$('fotoChecklist').hidden=true;$('riscosFoto').innerHTML='';save();go('visita')}; 
 $('fIns').onsubmit=e=>{e.preventDefault();db.inspecoes.push({local:$('iLocal').value,setor:$('iSetor').value,data:$('iData').value,checks:[...document.querySelectorAll('#fIns input[type=checkbox]:checked')].map(x=>x.value),obs:$('iObs').value,status:$('iStatus').value});e.target.reset();$('iData').value=today();save();go('inspecao')};
 $('fDds').onsubmit=e=>{e.preventDefault();db.dds.push({local:$('dLocal').value,tema:$('dTema').value,data:$('dData').value,dur:$('dDur').value,cont:$('dCont').value,resp:$('dResp').value,part:$('dPart').value.split('\\n').map(x=>x.trim()).filter(Boolean)});e.target.reset();$('dData').value=today();save();go('dds')};
 $('fFun').onsubmit=e=>{e.preventDefault();db.funcionarios.push({nome:$('fNome').value,cargo:$('fCargo').value,setor:$('fSetor').value,mat:$('fMat').value,ghe:$('fGhe').value});e.target.reset();save();go('funcionarios')};
